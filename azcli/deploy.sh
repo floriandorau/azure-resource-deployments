@@ -23,11 +23,9 @@ az group create \
     --tags $TAGS > "$LOG"
 echo "Resource group created"
 
-
 # VNet
 VNET_NAME="az-deploy-demo-vnet"
 VNET_DB_SUBNET_NAME="az-deploy-demo-db-subnet"
-VNET_WEBAPP_SUBNET_NAME="az-deploy-demo-webapp-subnet"
 
 echo "Creating Virtual Network: ${VNET_NAME}"
 az network vnet create \
@@ -48,18 +46,6 @@ az network vnet subnet create \
     --resource-group $RESOURCE_GROUP_NAME \
     --service-endpoints Microsoft.Sql \
     --subscription $SUBSCRPTION \
-    --output table \
-    --only-show-errors >> "$LOG"
-echo "Virtual Subnet created"
-
-echo "Creating Virtual Subent: ${VNET_WEBAPP_SUBNET_NAME}"
-az network vnet subnet create \
-    --name $VNET_WEBAPP_SUBNET_NAME \
-    --address-prefixes 10.0.1.0/24 \
-    --vnet-name $VNET_NAME \
-    --resource-group $RESOURCE_GROUP_NAME \
-    --subscription $SUBSCRPTION \
-    --service-endpoints Microsoft.Web \
     --output table \
     --only-show-errors >> "$LOG"
 echo "Virtual Subnet created"
@@ -102,6 +88,7 @@ az keyvault create \
     --resource-group $RESOURCE_GROUP_NAME \
     --location $LOCATION \
     --subscription $SUBSCRPTION \
+    --enable-purge-protection false \
     --only-show-errors \
     --output table \
     --tags $TAGS >> "$LOG"
