@@ -21,7 +21,7 @@ module vnet  './modules/vnet.bicep' = {
   scope: resourceGroup
   params: {
     vNetSettings: {
-      name: 'demo-vnet'
+      name: 'az-bicep-vnet'
       location: location
       addressPrefixes: [
         {
@@ -30,12 +30,11 @@ module vnet  './modules/vnet.bicep' = {
       ]
       subnets: [
         {
-          name: 'demo-db-subnet'
+          name: 'az-bicep-db-subnet'
           addressPrefix: '10.0.0.0/24'
         }
       ]
     }  
-    
     tags: tags
   }
 }
@@ -44,21 +43,31 @@ module kv  './modules/kv.bicep' = {
   name: 'keyVault'
   scope: resourceGroup
   params: {
-    vaultName: 'demo-kv'    
+    vaultName: 'az-bicep-kv'    
     location: location
     tags: tags
   }
 }
-
 
 module db  './modules/db.bicep' = {
   name: 'database'
   scope: resourceGroup
   params: {
-    dbName: 'demo-mssql-db'
-    serverName:'demo-mssql-server'
+    dbName: 'az-bicep-sql-db'
+    serverName:'az-bicep-sql-server'
     location: location
     tags: tags
   }
 }
 
+module webApp './modules/webapp.bicep' = {
+  name: 'webApp'
+  scope:resourceGroup
+  params: {
+    webAppName: 'az-bicep-webapp'
+    sku: 'F1'
+    location:location
+
+    tags: tags
+  }
+}
