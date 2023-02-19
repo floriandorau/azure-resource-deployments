@@ -1,8 +1,8 @@
 
-@description('The name of the KeyVault')
+@description('Name of the KeyVault')
 param vaultName string
 
-@description('The location of the KeyVault')
+@description('Location of the KeyVault')
 param location string = resourceGroup().location
 
 param tags object
@@ -13,7 +13,9 @@ resource kv 'Microsoft.KeyVault/vaults@2022-07-01' = {
   tags: tags
   properties: {
     tenantId: subscription().tenantId
-    enableSoftDelete: false    
+    enableSoftDelete: false 
+    enablePurgeProtection: false   
+    enabledForDiskEncryption: true 
     sku:{
       name: 'standard'
       family: 'A'

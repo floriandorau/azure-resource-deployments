@@ -9,6 +9,7 @@ param creationDate string = utcNow('YY-mm-ddTHH:mm:ss')
 var tags = {
   creator: creator
   created: creationDate
+  deployed: 'bicep'
 }
 
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-01-01' = {
