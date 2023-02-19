@@ -7,7 +7,7 @@ random () { openssl rand -hex 20; }
 
 LOCATION="westeurope"
 SUBSCRPTION="6cb9dfe0-8839-4cc4-9e5a-3fd69da52b27"
-TAGS="created=$(datetime) creator=f13233"
+TAGS="created=$(datetime) creator=f13233 deployed=azcli"
 LOG="az-$(datetime).log"
 
 # Resource group
