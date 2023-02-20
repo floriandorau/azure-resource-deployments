@@ -59,18 +59,38 @@ module "vNet" {
   resource_group_name = azurerm_resource_group.resource_group.name
 
   address_spaces = ["10.0.0.0/16"]
-  subnets = [{
-    address_prefix = "10.0.0.0/24"
-    name           = "az-terraforn-db-subnet"
-  }]
+  subnets = {
+    db_subnet = {
+      name              = "az-terraforn-db-subnet"
+      address_prefixes  = ["10.0.0.0/24"]
+      service_endpoints = ["Microsoft.Sql"]
+    }
+  }
   tags = local.tags
 }
 
 module "database" {
   source = "./modules/database"
 
-  server_name         = "az-bicep-sql-server"
-  db_name             = "az-bicep-sql-db"
+  server_name         = "az-terraforn-sql-server"
+  db_name             = "az-terraforn-sql-db"
+  resource_group_name = azurerm_resource_group.resource_group.name
+  location            = local.location
+  subnet_id           = module.vNet.subnets["db_subnet"].id
+  tags                = local.tags
+}
+
+module "app_service" {
+  source = "./modules/webapp"
+
+  web_app_name = "az-terraform-webapp"
+
+  enabled = false
+  sku = {
+    tier = "Standard"
+    size = "F1"
+  }
+
   resource_group_name = azurerm_resource_group.resource_group.name
   location            = local.location
   tags                = local.tags

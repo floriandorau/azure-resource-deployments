@@ -24,6 +24,11 @@ variable "sku_name" {
   default     = "S0"
 }
 
+variable "subnet_id" {
+  type        = string
+  description = "Id of containing subnet"
+}
+
 variable "tags" {
   description = "Tags attached to DB resources"
   type = object({
@@ -62,4 +67,10 @@ resource "azurerm_mssql_database" "mssql_database" {
   license_type = "LicenseIncluded"
 
   tags = var.tags
+}
+
+resource "azurerm_mssql_virtual_network_rule" "sql_vnet" {
+  name      = "${var.server_name}_network_rule"
+  server_id = azurerm_mssql_server.mssql_server.id
+  subnet_id = var.subnet_id
 }
