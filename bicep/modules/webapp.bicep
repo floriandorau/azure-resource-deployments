@@ -2,8 +2,11 @@
 @minLength(2)
 param webAppName string
 
-@description('The SKU of App Service Plan ')
+@description('The SKU of App Service Plan')
 param sku string = 'S1'
+
+@description('Flag if WebApp should be enabled')
+param enabled bool = true
 
 @description('Location for all resources.')
 param location string = resourceGroup().location
@@ -29,9 +32,10 @@ resource webAppPortal 'Microsoft.Web/sites@2022-03-01' = {
   kind: 'app'
   properties: {
     serverFarmId: appServicePlan.id
-    enabled: false
+    enabled: enabled
     httpsOnly: true
-    siteConfig: {      
+    siteConfig: {    
+      alwaysOn:false  
       linuxFxVersion: 'NODE|14-LTS'
     }
    

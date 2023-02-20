@@ -68,7 +68,6 @@ module webApp './modules/webapp.bicep' = {
     webAppName: 'az-bicep-webapp'
     sku: 'F1'
     location:location
-
     tags: tags
   }
 }
