@@ -14,7 +14,7 @@ param location string = resourceGroup().location
 param tags object
 
 resource appServicePlan 'Microsoft.Web/serverfarms@2022-03-01' = {
-  name: 'AppServicePlan-${webAppName}'
+  name: '${webAppName}-appserviceplan'
   location: location
   sku: {
     name: sku
@@ -35,7 +35,7 @@ resource webAppPortal 'Microsoft.Web/sites@2022-03-01' = {
     enabled: enabled
     httpsOnly: true
     siteConfig: {    
-      alwaysOn:false  
+      alwaysOn: false  
       linuxFxVersion: 'NODE|14-LTS'
     }
    
