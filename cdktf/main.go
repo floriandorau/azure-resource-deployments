@@ -5,7 +5,12 @@ import (
 
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
+	"github.com/cdktf/cdktf-provider-azurerm-go/azurerm/v5/appservice"
+	"github.com/cdktf/cdktf-provider-azurerm-go/azurerm/v5/appserviceplan"
+	"github.com/cdktf/cdktf-provider-azurerm-go/azurerm/v5/keyvault"
+	"github.com/cdktf/cdktf-provider-azurerm-go/azurerm/v5/mssqldatabase"
 	"github.com/cdktf/cdktf-provider-azurerm-go/azurerm/v5/mssqlserver"
+	"github.com/cdktf/cdktf-provider-azurerm-go/azurerm/v5/mssqlvirtualnetworkrule"
 	"github.com/cdktf/cdktf-provider-azurerm-go/azurerm/v5/provider"
 	"github.com/cdktf/cdktf-provider-azurerm-go/azurerm/v5/resourcegroup"
 	"github.com/cdktf/cdktf-provider-azurerm-go/azurerm/v5/subnet"
@@ -21,7 +26,7 @@ func NewMyStack(scope constructs.Construct, id string) cdktf.TerraformStack {
 
 	tags := make(map[string]*string)
 	tags["creator"] = jsii.String("f13233")
-	tags["created"] = jsii.String(time.Now().Format("YYYY-MM-DDTHH:mm:ss"))
+	tags["created"] = jsii.String(time.Now().Format(time.RFC3339))
 	tags["deployed"] = jsii.String("CDKTF")
 
 	provider.NewAzurermProvider(stack, jsii.String("azurerm"), &provider.AzurermProviderConfig{
@@ -38,17 +43,28 @@ func NewMyStack(scope constructs.Construct, id string) cdktf.TerraformStack {
 
 	vnet := virtualnetwork.NewVirtualNetwork(stack, jsii.String("az-cdktf-vnet"), &virtualnetwork.VirtualNetworkConfig{
 		Name:              jsii.String("az-cdktf-vnet"),
-		AddressSpace:      &[]*string{jsii.String("10.0.0.0/16")},
+		AddressSpace:      jsii.Strings("10.0.0.0/16"),
 		Location:          rg.Location(),
 		ResourceGroupName: rg.Name(),
 		Tags:              &tags,
 	})
 
-	subnet.NewSubnet(stack, jsii.String("az-cdktf-db-subnet"), &subnet.SubnetConfig{
+	subnet := subnet.NewSubnet(stack, jsii.String("az-cdktf-db-subnet"), &subnet.SubnetConfig{
 		Name:               jsii.String("az-cdktf-db-subnet"),
 		ResourceGroupName:  rg.Name(),
 		VirtualNetworkName: vnet.Name(),
-		AddressPrefixes:    &[]*string{jsii.String("10.0.0.0/24")},
+		AddressPrefixes:    jsii.Strings("10.0.0.0/24"),
+		ServiceEndpoints:   jsii.Strings("Microsoft.Sql"),
+	})
+
+	keyvault.NewKeyVault(stack, jsii.String("keyvault"), &keyvault.KeyVaultConfig{
+		Name:                   jsii.String("az-cdktf-keyvault"),
+		TenantId:               jsii.String("7c7b9321-129f-49df-9a90-1d150e3f40f1"),
+		Location:               rg.Location(),
+		ResourceGroupName:      rg.Name(),
+		SkuName:                jsii.String("standard"),
+		PurgeProtectionEnabled: false,
+		Tags:                   &tags,
 	})
 
 	mssqlserver_login := random.NewUuid(scope, jsii.String("server-login"), &random.UuidConfig{})
@@ -58,7 +74,7 @@ func NewMyStack(scope constructs.Construct, id string) cdktf.TerraformStack {
 		MinSpecial: jsii.Number(5),
 	})
 
-	mssqlserver.NewMssqlServer(stack, jsii.String("az-cdktf-sql-server"), &mssqlserver.MssqlServerConfig{
+	mssqlserver := mssqlserver.NewMssqlServer(stack, jsii.String("az-cdktf-sql-server"), &mssqlserver.MssqlServerConfig{
 		Name:                       jsii.String("az-cdktf-sql-server"),
 		ResourceGroupName:          rg.Name(),
 		Location:                   rg.Location(),
@@ -67,6 +83,46 @@ func NewMyStack(scope constructs.Construct, id string) cdktf.TerraformStack {
 		AdministratorLogin:         mssqlserver_login.ToString(),
 		AdministratorLoginPassword: mssqlserver_password.ToString(),
 		Tags:                       &tags,
+	})
+
+	mssqldatabase.NewMssqlDatabase(stack, jsii.String("az-cdktf-sql-db"), &mssqldatabase.MssqlDatabaseConfig{
+		Name:        jsii.String("az-cdktf-sql-db"),
+		ServerId:    mssqlserver.Id(),
+		Collation:   jsii.String("SQL_Latin1_General_CP1_CI_AS"),
+		LicenseType: jsii.String("LicenseIncluded"),
+		Tags:        &tags,
+	})
+
+	mssqlvirtualnetworkrule.NewMssqlVirtualNetworkRule(stack, jsii.String("az-cdktf-network-rule"), &mssqlvirtualnetworkrule.MssqlVirtualNetworkRuleConfig{
+		Name:     jsii.String(*mssqlserver.Name() + "-network-rule"),
+		ServerId: mssqlserver.Id(),
+		SubnetId: subnet.Id(),
+	})
+
+	appservice_name := "az-cdktf-webapp"
+
+	appserviceplan := appserviceplan.NewAppServicePlan(stack, jsii.String("appserviceplan"), &appserviceplan.AppServicePlanConfig{
+		Name:              jsii.String(appservice_name + "-appserviceplan"),
+		ResourceGroupName: rg.Name(),
+		Location:          rg.Location(),
+		Sku: &appserviceplan.AppServicePlanSku{
+			Tier: jsii.String("Standard"),
+			Size: jsii.String("F1"),
+		},
+		Tags: &tags,
+	})
+
+	appservice.NewAppService(stack, jsii.String("a"), &appservice.AppServiceConfig{
+		Name:              jsii.String(appservice_name),
+		ResourceGroupName: rg.Name(),
+		Location:          rg.Location(),
+		AppServicePlanId:  appserviceplan.Id(),
+		Enabled:           false,
+		HttpsOnly:         true,
+		SiteConfig: &appservice.AppServiceSiteConfig{
+			AlwaysOn: false,
+		},
+		Tags: &tags,
 	})
 
 	return stack
