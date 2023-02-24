@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/aws/constructs-go/constructs/v10"
@@ -35,6 +36,8 @@ func NewMyStack(scope constructs.Construct, id string) cdktf.TerraformStack {
 		SubscriptionId: jsii.String("6cb9dfe0-8839-4cc4-9e5a-3fd69da52b27"),
 	})
 
+	random.NewRandomProvider(stack, jsii.String("random"), &random.RandomProviderConfig{})
+
 	rg := resourcegroup.NewResourceGroup(stack, jsii.String("az-deploy-demo-cdktf-rg"), &resourcegroup.ResourceGroupConfig{
 		Name:     jsii.String("az-deploy-demo-cdktf-rg"),
 		Location: location,
@@ -67,12 +70,15 @@ func NewMyStack(scope constructs.Construct, id string) cdktf.TerraformStack {
 		Tags:                   &tags,
 	})
 
-	mssqlserver_login := random.NewUuid(scope, jsii.String("server-login"), &random.UuidConfig{})
-	mssqlserver_password := random.NewPassword(scope, jsii.String("server-password"), &random.PasswordConfig{
-		Length:     jsii.Number(32),
+	mssqlserver_login := random.NewUuid(stack, jsii.String("server-login"), &random.UuidConfig{})
+	mssqlserver_password := random.NewPassword(stack, jsii.String("server-password"), &random.PasswordConfig{
+		Length: jsii.Number(32),
+
 		Special:    jsii.Bool(true),
 		MinSpecial: jsii.Number(5),
 	})
+
+	fmt.Printf(*mssqlserver_password.Result())
 
 	mssqlserver := mssqlserver.NewMssqlServer(stack, jsii.String("az-cdktf-sql-server"), &mssqlserver.MssqlServerConfig{
 		Name:                       jsii.String("az-cdktf-sql-server"),
@@ -80,8 +86,8 @@ func NewMyStack(scope constructs.Construct, id string) cdktf.TerraformStack {
 		Location:                   rg.Location(),
 		MinimumTlsVersion:          jsii.String("1.2"),
 		Version:                    jsii.String("12.0"),
-		AdministratorLogin:         mssqlserver_login.ToString(),
-		AdministratorLoginPassword: mssqlserver_password.ToString(),
+		AdministratorLogin:         mssqlserver_login.Result(),
+		AdministratorLoginPassword: mssqlserver_password.BcryptHash(),
 		Tags:                       &tags,
 	})
 
@@ -112,15 +118,15 @@ func NewMyStack(scope constructs.Construct, id string) cdktf.TerraformStack {
 		Tags: &tags,
 	})
 
-	appservice.NewAppService(stack, jsii.String("a"), &appservice.AppServiceConfig{
+	appservice.NewAppService(stack, jsii.String("appservice"), &appservice.AppServiceConfig{
 		Name:              jsii.String(appservice_name),
 		ResourceGroupName: rg.Name(),
 		Location:          rg.Location(),
 		AppServicePlanId:  appserviceplan.Id(),
-		Enabled:           false,
-		HttpsOnly:         true,
-		SiteConfig: &appservice.AppServiceSiteConfig{
-			AlwaysOn: false,
+		Enabled:           jsii.Bool(false),
+		HttpsOnly:         jsii.Bool(true),
+		Identity: &appservice.AppServiceIdentity{
+			Type: jsii.String("SystemAssigned"),
 		},
 		Tags: &tags,
 	})
