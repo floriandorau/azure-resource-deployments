@@ -100,7 +100,7 @@ func NewMyStack(scope constructs.Construct, id string) cdktf.TerraformStack {
 	})
 
 	mssqlvirtualnetworkrule.NewMssqlVirtualNetworkRule(stack, jsii.String("az-cdktf-network-rule"), &mssqlvirtualnetworkrule.MssqlVirtualNetworkRuleConfig{
-		Name:     jsii.String(*mssqlserver.Name() + "-network-rule"),
+		Name:     jsii.String(fmt.Sprintf("%s-network-rule", *mssqlserver.Name())),
 		ServerId: mssqlserver.Id(),
 		SubnetId: subnet.Id(),
 	})
@@ -108,7 +108,7 @@ func NewMyStack(scope constructs.Construct, id string) cdktf.TerraformStack {
 	appservice_name := "az-cdktf-webapp"
 
 	appserviceplan := appserviceplan.NewAppServicePlan(stack, jsii.String("appserviceplan"), &appserviceplan.AppServicePlanConfig{
-		Name:              jsii.String(appservice_name + "-appserviceplan"),
+		Name:              jsii.String(fmt.Sprintf("%s-appserviceplan", appservice_name)),
 		ResourceGroupName: rg.Name(),
 		Location:          rg.Location(),
 		Sku: &appserviceplan.AppServicePlanSku{
