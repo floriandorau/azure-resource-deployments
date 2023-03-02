@@ -1,18 +1,3 @@
-variable "tenant_id" {
-  type        = string
-  description = "Tenant id where to deploy resources"
-}
-
-variable "subscription_id" {
-  type        = string
-  description = "Subscription id where to deploy resources"
-}
-
-variable "creator" {
-  type        = string
-  description = "Name to use as creator tag for deployed resources"
-}
-
 terraform {
   required_providers {
     azurerm = ">=3.44.0"
@@ -20,11 +5,10 @@ terraform {
 }
 
 locals {
-  location = "West Europe"
-
   tags = {
     creator  = var.creator
     created  = timestamp()
+    environment = var.environment
     deployed = "terraform"
   }
 }
@@ -36,16 +20,16 @@ provider "azurerm" {
 }
 
 resource "azurerm_resource_group" "resource_group" {
-  name     = "az-deploy-demo-terraform-rg"
-  location = local.location
+  name     = "az-deploy-terraform-${var.environment}-rg"
+  location = var.location
   tags     = local.tags
 }
 
 module "keyVault" {
   source = "./modules/keyvault"
 
-  name                = "az-terraform-kv"
-  location            = local.location
+  name                = "az-terraform-${var.environment}-kv"
+  location            = azurerm_resource_group.resource_group.location
   resource_group_name = azurerm_resource_group.resource_group.name
   tenant_id           = var.tenant_id
   tags                = local.tags
@@ -54,14 +38,14 @@ module "keyVault" {
 module "vNet" {
   source = "./modules/vnet"
 
-  name                = "az-terraform-vnet"
-  location            = local.location
+  name                = "az-terraform-${var.environment}-vnet"
+  location            = azurerm_resource_group.resource_group.location
   resource_group_name = azurerm_resource_group.resource_group.name
 
   address_spaces = ["10.0.0.0/16"]
   subnets = {
     db_subnet = {
-      name              = "az-terraform-db-subnet"
+      name              = "az-terraform-${var.environment}-db-subnet"
       address_prefixes  = ["10.0.0.0/24"]
       service_endpoints = ["Microsoft.Sql"]
     }
@@ -72,10 +56,10 @@ module "vNet" {
 module "database" {
   source = "./modules/database"
 
-  server_name         = "az-terraform-sql-server"
-  db_name             = "az-terraform-sql-db"
+  server_name         = "az-terraform-${var.environment}-sql-server"
+  db_name             = "az-terraform-${var.environment}-sql-db"
   resource_group_name = azurerm_resource_group.resource_group.name
-  location            = local.location
+  location            = azurerm_resource_group.resource_group.location
   subnet_id           = module.vNet.subnets["db_subnet"].id
   tags                = local.tags
 }
@@ -83,15 +67,12 @@ module "database" {
 module "app_service" {
   source = "./modules/webapp"
 
-  web_app_name = "az-terraform-webapp"
+  web_app_name = "az-terraform-${var.environment}-webapp"
 
   enabled = false
-  sku = {
-    tier = "Standard"
-    size = "F1"
-  }
+  sku_name = "F1"
 
   resource_group_name = azurerm_resource_group.resource_group.name
-  location            = local.location
+  location            = azurerm_resource_group.resource_group.location
   tags                = local.tags
 }

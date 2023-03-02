@@ -1,20 +1,35 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-TENANT_ID=7c7b9321-129f-49df-9a90-1d150e3f40f1
-SUBSCRIPTION_ID=6cb9dfe0-8839-4cc4-9e5a-3fd69da52b27
+if [[ $1 != "staging" && $1 != "production" ]]; then
+  'No env specified. Either use staging or production' > stderr
+  exit 1
+fi
+
+ENV=$1
+CREATOR="f13233"
 TF_PLAN_FILE=az-demo.tfplan
 
 echo "Running init"
 terraform init
 echo "Init completed"
 
+if [ "$(terraform workspace list | grep -c ${ENV} )" != "1" ]; then
+  echo "Create workspace '${ENV}'"
+  terraform workspace new "$ENV"
+else
+  echo "Selecting workspace '${ENV}'"
+  terraform workspace select "$ENV"
+fi
+
+WORKSPACE=$(terraform workspace show)
+echo "Using workspace '$WORKSPACE'"
+
 echo "Running plan"
 terraform plan \
   -out $TF_PLAN_FILE \
-  -var "creator=f13233" \
-  -var "tenant_id=${TENANT_ID}" \
-  -var "subscription_id=${SUBSCRIPTION_ID}" 
+  -var "creator=${CREATOR}" \
+  -var-file "./variables/${ENV}.tfvars"
 echo "Plan completed"
 
 echo "Running apply"
