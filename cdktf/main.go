@@ -20,8 +20,8 @@ import (
 	"github.com/hashicorp/terraform-cdk-go/cdktf"
 )
 
-func NewMyStack(scope constructs.Construct, id string) cdktf.TerraformStack {
-	stack := cdktf.NewTerraformStack(scope, &id)
+func NewMyStack(scope constructs.Construct, stackId string) cdktf.TerraformStack {
+	stack := cdktf.NewTerraformStack(scope, &stackId)
 
 	subscriptionId := cdktf.NewTerraformVariable(stack, jsii.String("subscription_id"), &cdktf.TerraformVariableConfig{
 		Type:        jsii.String("string"),
@@ -41,11 +41,22 @@ func NewMyStack(scope constructs.Construct, id string) cdktf.TerraformStack {
 		Nullable:    jsii.Bool(false),
 	})
 
-	location := cdktf.NewTerraformLocal(stack, jsii.String("location"), "westeurope")
+	location := cdktf.NewTerraformVariable(stack, jsii.String("location"), &cdktf.TerraformVariableConfig{
+		Type:        jsii.String("string"),
+		Description: jsii.String("Region where to deploy resources"),
+		Nullable:    jsii.Bool(false),
+	})
+
+	env := cdktf.NewTerraformVariable(stack, jsii.String("environment"), &cdktf.TerraformVariableConfig{
+		Type:        jsii.String("string"),
+		Description: jsii.String("Name of the environment where resources belong to"),
+		Nullable:    jsii.Bool(false),
+	})
 
 	commonTags := cdktf.NewTerraformLocal(stack, jsii.String("common_tags"), map[string]string{
-		"Creator":  *creator.ToString(),
+		"Creator":  *creator.StringValue(),
 		"Created":  time.Now().Format(time.RFC3339),
+		"Env":      *env.StringValue(),
 		"Deployed": "CDKTF",
 	})
 
@@ -57,14 +68,14 @@ func NewMyStack(scope constructs.Construct, id string) cdktf.TerraformStack {
 
 	random.NewRandomProvider(stack, jsii.String("random"), &random.RandomProviderConfig{})
 
-	rg := resourcegroup.NewResourceGroup(stack, jsii.String("az-deploy-demo-cdktf-rg"), &resourcegroup.ResourceGroupConfig{
-		Name:     jsii.String("az-deploy-demo-cdktf-rg"),
-		Location: location.AsString(),
+	rg := resourcegroup.NewResourceGroup(stack, jsii.String("az-deploy-cdktf-rg"), &resourcegroup.ResourceGroupConfig{
+		Name:     jsii.String(fmt.Sprintf("az-deploy-cdktf-%s-rg", *env.StringValue())),
+		Location: location.StringValue(),
 		Tags:     commonTags.AsStringMap(),
 	})
 
 	vnet := virtualnetwork.NewVirtualNetwork(stack, jsii.String("az-cdktf-vnet"), &virtualnetwork.VirtualNetworkConfig{
-		Name:              jsii.String("az-cdktf-vnet"),
+		Name:              jsii.String(fmt.Sprintf("az-cdktf-%s-vnet", *env.StringValue())),
 		AddressSpace:      jsii.Strings("10.0.0.0/16"),
 		Location:          rg.Location(),
 		ResourceGroupName: rg.Name(),
@@ -72,7 +83,7 @@ func NewMyStack(scope constructs.Construct, id string) cdktf.TerraformStack {
 	})
 
 	subnet := subnet.NewSubnet(stack, jsii.String("az-cdktf-db-subnet"), &subnet.SubnetConfig{
-		Name:               jsii.String("az-cdktf-db-subnet"),
+		Name:               jsii.String(fmt.Sprintf("az-cdktf-%s-db-subne", *env.StringValue())),
 		ResourceGroupName:  rg.Name(),
 		VirtualNetworkName: vnet.Name(),
 		AddressPrefixes:    jsii.Strings("10.0.0.0/24"),
@@ -80,7 +91,7 @@ func NewMyStack(scope constructs.Construct, id string) cdktf.TerraformStack {
 	})
 
 	keyvault.NewKeyVault(stack, jsii.String("keyvault"), &keyvault.KeyVaultConfig{
-		Name:                   jsii.String("az-cdktf-keyvault"),
+		Name:                   jsii.String(fmt.Sprintf("az-cdktf-%s-keyvault", *env.StringValue())),
 		TenantId:               jsii.String("7c7b9321-129f-49df-9a90-1d150e3f40f1"),
 		Location:               rg.Location(),
 		ResourceGroupName:      rg.Name(),
@@ -100,7 +111,7 @@ func NewMyStack(scope constructs.Construct, id string) cdktf.TerraformStack {
 	fmt.Printf(*mssqlserver_password.Result())
 
 	mssqlserver := mssqlserver.NewMssqlServer(stack, jsii.String("az-cdktf-sql-server"), &mssqlserver.MssqlServerConfig{
-		Name:                       jsii.String("az-cdktf-sql-server"),
+		Name:                       jsii.String(fmt.Sprintf("az-cdktf-%s-sql-server", *env.StringValue())),
 		ResourceGroupName:          rg.Name(),
 		Location:                   rg.Location(),
 		MinimumTlsVersion:          jsii.String("1.2"),
@@ -111,7 +122,7 @@ func NewMyStack(scope constructs.Construct, id string) cdktf.TerraformStack {
 	})
 
 	mssqldatabase.NewMssqlDatabase(stack, jsii.String("az-cdktf-sql-db"), &mssqldatabase.MssqlDatabaseConfig{
-		Name:        jsii.String("az-cdktf-sql-db"),
+		Name:        jsii.String(fmt.Sprintf("az-cdktf-%s-sql-db", *env.StringValue())),
 		ServerId:    mssqlserver.Id(),
 		Collation:   jsii.String("SQL_Latin1_General_CP1_CI_AS"),
 		LicenseType: jsii.String("LicenseIncluded"),
@@ -119,12 +130,12 @@ func NewMyStack(scope constructs.Construct, id string) cdktf.TerraformStack {
 	})
 
 	mssqlvirtualnetworkrule.NewMssqlVirtualNetworkRule(stack, jsii.String("az-cdktf-network-rule"), &mssqlvirtualnetworkrule.MssqlVirtualNetworkRuleConfig{
-		Name:     jsii.String(fmt.Sprintf("%s-network-rule", *mssqlserver.Name())),
+		Name:     jsii.String(fmt.Sprintf("%s-%s-network-rule", *mssqlserver.Name(), *env.StringValue())),
 		ServerId: mssqlserver.Id(),
 		SubnetId: subnet.Id(),
 	})
 
-	appservice_name := "az-cdktf-webapp"
+	appservice_name := fmt.Sprintf("az-cdktf-%s-webapp", *env.StringValue())
 
 	appserviceplan := appserviceplan.NewAppServicePlan(stack, jsii.String("appserviceplan"), &appserviceplan.AppServicePlanConfig{
 		Name:              jsii.String(fmt.Sprintf("%s-appserviceplan", appservice_name)),
@@ -156,7 +167,8 @@ func NewMyStack(scope constructs.Construct, id string) cdktf.TerraformStack {
 func main() {
 	app := cdktf.NewApp(nil)
 
-	NewMyStack(app, "cdktf")
+	NewMyStack(app, "staging")
+	NewMyStack(app, "prod")
 
 	app.Synth()
 }
